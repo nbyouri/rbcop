@@ -52,9 +52,9 @@ class Context
     @klass = klass
     @method = method
     @current_klass = klass.new
+    # Rebuild block with parameters?
     val = instance_exec(&impl)
     block = Proc.new { val }
-    p block.call
     @@adaptations[klass][method].push(block)
     self.dynamic_adapt
   end
@@ -99,7 +99,7 @@ class Context
   end
 
   def method_missing(method, *args)
-      @klass.send(method, *args)
+      @current_klass.send(method, *args)
   end
 end
 
@@ -113,10 +113,9 @@ class D
   def bar; 2; end
 end
 
-class ContextTest < Test::Unit::TestCase
+class AdaptTests < Test::Unit::TestCase
   # Use omit() until reset_cop_state is implemented
   def test_active
-    omit()
     c = Context.new
     assert_equal(false, c.active?)
     c.activate
@@ -126,26 +125,15 @@ class ContextTest < Test::Unit::TestCase
   end
 
   def test_adapt
-    omit()
     c = Context.new
-    c.adapt(C, :foo) { C.new.bar }
+    c.adapt(C, :foo) { bar }
     c.activate
     assert_equal(2, C.new.foo)
     c.deactivate
     assert_equal(1, C.new.foo)
   end
 
-  def test_adapt_arguments
-    c = Context.new
-    c.adapt(C, :foo) { |x| x }
-    c.activate
-    res = C.new.foo(5)
-    c.deactivate
-    assert_equal(5, res)
-  end
-
   def test_unadapt
-    omit()
     c = Context.new
     c.adapt(C, :foo) { bar }
     c.activate
@@ -157,7 +145,6 @@ class ContextTest < Test::Unit::TestCase
   end
 
   def test_onthefly
-    omit()
     c = Context.new
     c.activate
     c.adapt(C, :foo) { bar }
@@ -166,9 +153,22 @@ class ContextTest < Test::Unit::TestCase
     c.deactivate
     assert_equal(3, res)
   end
+end
+
+class ArgumentTests < Test::Unit::TestCase
+  def test_adapt_arguments
+    c = Context.new
+    c.adapt(C, :foo) { |x| x }
+    c.activate
+    res = C.new.foo(5)
+    c.deactivate
+    assert_equal(5, res)
+  end
+end
+
+class MultipleTests < Test::Unit::TestCase
 
   def test_two_contexts
-    omit()
     c, d = Context.new, Context.new
     c.adapt(C, :foo) { 91 }
     d.adapt(C, :foo) { 92 }
@@ -182,7 +182,6 @@ class ContextTest < Test::Unit::TestCase
   end
 
   def test_two_classes
-    omit()
     c = Context.new
     c.adapt(C, :foo) { 13 }
     c.adapt(D, :foo) { 14 }
@@ -195,7 +194,6 @@ end
 
 class ProceedTests < Test::Unit::TestCase
   def test_proceed
-    omit()
     c, d = Context.new,	Context.new
     c.adapt(C, :foo) { 13 }
     d.adapt(C, :foo) { 6 + proceed() }
@@ -208,7 +206,6 @@ class ProceedTests < Test::Unit::TestCase
   end
 
   def test_nested_proceed
-    omit()
     # TODO
   end
 end
