@@ -1,7 +1,5 @@
 #!/usr/local/bin/ruby
 
-require "test/unit"
-
 class Context
   # Context + Implementation for a klass method
   class CI
@@ -58,11 +56,13 @@ class Context
 
     # Add the adaptation
     self.push_adapt(klass, method, self, impl)
+
+    # Apply
     self.dynamic_adapt
   end
 
   # Get to the previous adaptation
-  # XXX pop for self only?
+  # XXX only unadapt on self?
   def unadapt(klass, method)
     @@adaptations[klass][method].pop
     self.dynamic_adapt
@@ -84,15 +84,19 @@ class Context
   def dynamic_adapt
     if !active?; return end
 
-    # Define most prioritary implementation for each method
+    # Define most prioritary implementation of context for each method
     @@adaptations.each do |klass, methods|
       methods.each do |m,impls|
-        self.send_method(klass, m, impls.last.impl)
+        cimpls = impls.select do |ci|
+          ci.ctx == self
+        end
+        # Install the base methods if no other context is available
+        cimpls = impls if cimpls.size == 0
+        self.send_method(klass, m, cimpls.last.impl)
       end
     end
   end
 
-  # Add a klass methods
   def add_base_methods(klass)
     if @@adaptations[klass].empty?
       klass.instance_methods(false).each do |name|

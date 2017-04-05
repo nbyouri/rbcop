@@ -1,4 +1,5 @@
 load 'projet.rb'
+require "test/unit"
 
 class C
   def foo; 1; end
@@ -78,14 +79,17 @@ class MultipleTests < Test::Unit::TestCase
     assert_equal(91, res)
   end
 
-  def test_two_classes
-    c = Context.new
-    c.adapt(C, :foo) { 13 }
-    c.adapt(D, :foo) { 14 }
+  def test_activation_priority
+    c,d = Context.new, Context.new
+    d.adapt(C, :foo) { 13 }
+    c.adapt(C, :foo) { 14 }
+    d.activate
     c.activate
-    res = C.new.foo + D.new.foo
+    d.activate
+    res = C.new.foo
     c.deactivate
-    assert_equal(27, res)
+    d.deactivate
+    assert_equal(13, res)
   end
 
   def test_two_contexts_deactivation
@@ -113,16 +117,16 @@ class ProceedTests < Test::Unit::TestCase
     assert_equal(5, res)
   end
 
-  # def test_proceed_arguments
-  #   c = Context.new
-  #   c.activate
-  #   c.adapt(C, :foo) { |x| x }
-  #   c.adapt(C, :foo) { proceed(2) }
-  #   assert_equal(2, proceed(2))
-  #   #res = C.new.foo(4)
-  #   c.deactivate
-  #   #assert_equal(5, res)
-  # end
+  def test_proceed_arguments
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { |x| x }
+    c.adapt(C, :foo) { proceed(2) }
+    assert_equal(2, proceed(2))
+    #res = C.new.foo(4)
+    c.deactivate
+    #assert_equal(5, res)
+  end
 
   # def test_nested_proceed
   #   omit()
