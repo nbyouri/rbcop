@@ -121,11 +121,10 @@ class ProceedTests < Test::Unit::TestCase
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |x| x }
-    c.adapt(C, :foo) { proceed(2) }
-    assert_equal(2, proceed(2))
-    #res = C.new.foo(4)
+    c.adapt(C, :foo) { |x| x + proceed(2) }
+    res = C.new.foo(3)
     c.deactivate
-    #assert_equal(5, res)
+    assert_equal(5, res)
   end
 
   # def test_nested_proceed

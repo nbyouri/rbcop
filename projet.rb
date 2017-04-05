@@ -91,7 +91,7 @@ class Context
           ci.ctx == self
         end
         # Install the base methods if no other context is available
-        cimpls = impls if cimpls.size == 0
+        cimpls = impls if cimpls.empty?
         self.send_method(klass, m, cimpls.last.impl)
       end
     end
