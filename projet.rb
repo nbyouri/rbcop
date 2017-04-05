@@ -1,3 +1,5 @@
+#!/usr/local/bin/ruby
+
 require "test/unit"
 
 class Context
@@ -8,8 +10,6 @@ class Context
       end
     end
     @@count = 0
-    @klass = nil
-    @method = nil
   end
 
   # Returns whether the method is active
@@ -39,23 +39,14 @@ class Context
   # adaptations are stored in a hashmap containing a stack of adaptations
   # for each method
   def adapt(klass, method, &impl)
-    # If the hashmap is empty, start by adding base methods
-    if @@adaptations.empty?
-      klass.instance_methods(false).each do |name|
-        meth = klass.instance_method(name)
-        method_bound = meth.bind(klass.new)
-        @@adaptations[klass][name].push(method_bound)
-      end
-    end
+    # If this is the first adapt, start by adding base methods
+    self.add_base_methods(klass)
 
-    # Execute the block
-    @klass = klass
-    @method = method
-    @current_klass = klass.new
-    # Rebuild block with parameters?
-    val = instance_exec(&impl)
-    block = Proc.new { val }
-    @@adaptations[klass][method].push(block)
+    # Define a proceed method
+    self.send_method(klass, :proceed, proceed(klass, method))
+
+    # Add the adaptation
+    @@adaptations[klass][method].push(impl)
     self.dynamic_adapt
   end
 
@@ -66,15 +57,10 @@ class Context
   end
 
   # Call the next most prioritary method
-  def proceed
-    nbadapts = self.nbadapts(@klass, @method) - 1;
-    previous_method = @@adaptations[@klass][@method][nbadapts]
+  def proceed(klass, method)
+    previous_method = @@adaptations[klass][method].last
     raise Exception, "Proceed on base method" if previous_method.nil?
-    if previous_method.arity > 0
-      previous_method.call(previous_method.parameters)
-    else
-      previous_method.call
-    end
+    previous_method
   end
 
   # Define a method in class
@@ -94,12 +80,21 @@ class Context
     end
   end
 
+  # Returns amount of implementations in store for a method
   def nbadapts(klass,method)
     @@adaptations[klass][method].size
   end
 
-  def method_missing(method, *args)
-      @current_klass.send(method, *args)
+  # Add a klass methods
+  def add_base_methods(klass)
+    if @@adaptations[klass].empty?
+      klass.instance_methods(false).each do |name|
+        next if name.to_s == "proceed"
+        meth = klass.instance_method(name)
+        method_bound = meth.bind(klass.new)
+        @@adaptations[klass][name].push(method_bound.to_proc)
+      end
+    end
   end
 end
 
@@ -109,8 +104,8 @@ class C
 end
 
 class D
-  def foo; 1; end
-  def bar; 2; end
+  def foo; 3; end
+  def bar; 4; end
 end
 
 class AdaptTests < Test::Unit::TestCase
@@ -158,11 +153,11 @@ end
 class ArgumentTests < Test::Unit::TestCase
   def test_adapt_arguments
     c = Context.new
-    c.adapt(C, :foo) { |x| x }
+    c.adapt(C, :foo) { |x,y| x + y }
     c.activate
-    res = C.new.foo(5)
+    res = C.new.foo(1,2)
     c.deactivate
-    assert_equal(5, res)
+    assert_equal(3, res)
   end
 end
 
@@ -194,18 +189,37 @@ end
 
 class ProceedTests < Test::Unit::TestCase
   def test_proceed
+    c =	Context.new
+    c.adapt(C, :foo) { 3 }
+    c.adapt(C, :foo) { 2 + proceed }
+    assert_equal(3, C.new.proceed)
+    c.activate
+    res = C.new.foo
+    c.deactivate
+    assert_equal(5, res)
+  end
+
+  def test_proceed_arguments
+    omit()
+    c = Context.new
+    c.adapt(C, :foo) { |x| x+proceed() }
+    res = C.new.foo(4)
+    c.deactivate
+    assert_equal(5, res)
+  end
+
+  def test_nested_proceed
+    omit()
     c, d = Context.new,	Context.new
-    c.adapt(C, :foo) { 13 }
-    d.adapt(C, :foo) { 6 + proceed() }
+    d.adapt(C, :foo) { 2 + proceed }
+    assert_equal(1, C.new.proceed)
+    c.adapt(C, :foo) { proceed + bar }
+    assert_equal(3, C.new.proceed)
     c.activate
     d.activate
     res = C.new.foo
     c.deactivate
     d.deactivate
-    assert_equal(19, res)
-  end
-
-  def test_nested_proceed
-    # TODO
+    assert_equal(3, res)
   end
 end
