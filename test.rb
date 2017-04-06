@@ -72,6 +72,33 @@ class ArgumentTests < Test::Unit::TestCase
     assert_equal("123", C.new.foo([1,2,3]))
     Context.reset_cop_state
   end
+
+  def test_arguments_optional
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { |x = 2| x }
+    assert_equal(2, C.new.foo)
+    Context.reset_cop_state
+  end
+
+  def test_arguments_array_decomposition
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { |x,*y| y }
+    res = C.new.foo(1,2,3)
+    Context.reset_cop_state
+    assert_equal([2,3], res)
+  end
+
+  def test_arguments_block
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { |&block| lambda { block } }
+    res = C.new.foo { 1 }
+    Context.reset_cop_state
+    assert_equal(1, res.call.call)
+  end
+
 end
 
 class MultipleTests < Test::Unit::TestCase

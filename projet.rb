@@ -58,11 +58,10 @@ class Context
     # Define a proceed method
     latest = self.proceed(klass, method)
     # XXX hack
-    nimpl = eval(impl.to_source(:ignore_nested => true).gsub(/proceed/, latest.to_s))
-    #self.send_method(klass, :proceed, lambda {klass.new.send(latest)})
-
+    hack = impl.to_source(:ignore_nested => true).gsub(/proceed/, latest.to_s)
+    
     # Add the adaptation
-    self.push_adapt(klass, method, self, nimpl)
+    self.push_adapt(klass, method, self, eval(hack))
 
     # Apply
     self.dynamic_adapt
@@ -129,12 +128,11 @@ class Context
   def self.reset_cop_state
     # Reset methods to the base implementation
     @@adaptations.each do |klass, methods|
+      klass.instance_methods(false).each do |name|
+        klass.send(:remove_method, name) if name.to_s.include? "proceed"
+      end
       methods.each do |m,impls|
         Context.new.send_method(klass, m, impls.first.impl)
-      end
-      # Remove proceed methods as well
-      klass.instance_methods(false).each do |name|
-          klass.send(:remove_method, name) if name.to_s.include? 'proceed'
       end
     end
 
