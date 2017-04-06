@@ -12,6 +12,10 @@ class Context
   end
 
   def initialize
+    Context.set_vars
+  end
+
+  def self.set_vars
     @@adaptations = Hash.new do |klass,methods|
       klass[methods] = Hash.new do |method,impls|
         method[impls] = Array.new
@@ -53,7 +57,7 @@ class Context
 
     # Define a proceed method
     latest = self.proceed(klass, method)
-    # XXX hack?
+    # XXX hack
     nimpl = eval(impl.to_source.gsub(/proceed/, latest.to_s))
     #self.send_method(klass, :proceed, lambda {klass.new.send(latest)})
 
@@ -121,8 +125,20 @@ class Context
     @@adaptations[klass][method].push(ci)
   end
 
-  # Reset changes made by the framework
+  # Reset global changes made by the framework
   def self.reset_cop_state
-    # TODO
+    # Reset methods to the base implementation
+    @@adaptations.each do |klass, methods|
+      methods.each do |m,impls|
+        Context.new.send_method(klass, m, impls.first.impl)
+      end
+      # Remove proceed methods as well
+      klass.instance_methods(false).each do |name|
+          klass.send(:remove_method, name) if name.to_s.include? 'proceed'
+      end
+    end
+
+    # Reset variables
+    Context.set_vars
   end
 end

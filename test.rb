@@ -112,21 +112,20 @@ class ProceedTests < Test::Unit::TestCase
     c =	Context.new
     c.activate
     c.adapt(C, :foo) { 3 }
-    c.adapt(C, :foo) { bar + proceed }
+    c.adapt(C, :foo) { bar + proceed() }
     res = C.new.foo
     c.deactivate
     assert_equal(5, res)
   end
 
   def test_proceed_arguments
-    #omit()
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |x| x }
-    c.adapt(C, :foo) { |x| x + proceed(2) }
-    res = C.new.foo(3)
+    c.adapt(C, :foo) { |x,y| x + y * proceed(2) }
+    res = C.new.foo(3,2)
     c.deactivate
-    assert_equal(5, res)
+    assert_equal(7, res)
   end
 
   def test_nested_proceed
@@ -137,5 +136,23 @@ class ProceedTests < Test::Unit::TestCase
     res = C.new.foo
     c.deactivate
     assert_equal(8, res)
+  end
+end
+
+class ResetTests < Test::Unit::TestCase
+  def test_reset
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { 3 }
+    c.unadapt(C, :foo)
+    assert_equal(1, C.new.foo)
+    c.deactivate
+  end
+  def setup
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { bar }
+    assert_equal(2, C.new.foo)
+    Context.reset_cop_state
   end
 end
