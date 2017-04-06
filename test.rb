@@ -64,6 +64,14 @@ class ArgumentTests < Test::Unit::TestCase
     c.deactivate
     assert_equal(3, res)
   end
+
+  def test_arguments_nested_block
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { |x| s = ""; x.each {|i| s << i.to_s }; s}
+    assert_equal("123", C.new.foo([1,2,3]))
+    Context.reset_cop_state
+  end
 end
 
 class MultipleTests < Test::Unit::TestCase

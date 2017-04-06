@@ -58,7 +58,7 @@ class Context
     # Define a proceed method
     latest = self.proceed(klass, method)
     # XXX hack
-    nimpl = eval(impl.to_source.gsub(/proceed/, latest.to_s))
+    nimpl = eval(impl.to_source(:ignore_nested => true).gsub(/proceed/, latest.to_s))
     #self.send_method(klass, :proceed, lambda {klass.new.send(latest)})
 
     # Add the adaptation
