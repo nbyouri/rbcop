@@ -1,3 +1,5 @@
+#!/usr/local/bin/ruby
+
 load 'projet.rb'
 require "test/unit"
 
@@ -111,13 +113,13 @@ class ProceedTests < Test::Unit::TestCase
     c.activate
     c.adapt(C, :foo) { 3 }
     c.adapt(C, :foo) { bar + proceed }
-    assert_equal(3, C.new.proceed)
     res = C.new.foo
     c.deactivate
     assert_equal(5, res)
   end
 
   def test_proceed_arguments
+    #omit()
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |x| x }
@@ -127,18 +129,13 @@ class ProceedTests < Test::Unit::TestCase
     assert_equal(5, res)
   end
 
-  # def test_nested_proceed
-  #   omit()
-  #   c, d = Context.new,	Context.new
-  #   d.adapt(C, :foo) { 2 + proceed }
-  #   assert_equal(1, C.new.proceed)
-  #   c.adapt(C, :foo) { proceed + bar }
-  #   assert_equal(3, C.new.proceed)
-  #   c.activate
-  #   d.activate
-  #   res = C.new.foo
-  #   c.deactivate
-  #   d.deactivate
-  #   assert_equal(3, res)
-  # end
+  def test_nested_proceed
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { 2 + proceed }
+    c.adapt(C, :foo) { proceed + bar + proceed }
+    res = C.new.foo
+    c.deactivate
+    assert_equal(8, res)
+  end
 end

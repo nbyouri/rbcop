@@ -1,4 +1,4 @@
-#!/usr/local/bin/ruby
+require 'sourcify'
 
 class Context
   # Context + Implementation for a klass method
@@ -12,9 +12,9 @@ class Context
   end
 
   def initialize
-    @@adaptations = Hash.new do |k,v|
-      k[v] = Hash.new do |k2,v2|
-        k2[v2] = Array.new
+    @@adaptations = Hash.new do |klass,methods|
+      klass[methods] = Hash.new do |method,impls|
+        method[impls] = Array.new
       end
     end
     @@count = 0
@@ -52,10 +52,13 @@ class Context
     self.add_base_methods(klass)
 
     # Define a proceed method
-    self.send_method(klass, :proceed, proceed(klass, method))
+    latest = self.proceed(klass, method)
+    # XXX hack?
+    nimpl = eval(impl.to_source.gsub(/proceed/, latest.to_s))
+    #self.send_method(klass, :proceed, lambda {klass.new.send(latest)})
 
     # Add the adaptation
-    self.push_adapt(klass, method, self, impl)
+    self.push_adapt(klass, method, self, nimpl)
 
     # Apply
     self.dynamic_adapt
@@ -68,11 +71,14 @@ class Context
     self.dynamic_adapt
   end
 
-  # Call the next most prioritary method
+  # Define the next most prioritary method
   def proceed(klass, method)
     previous_method = @@adaptations[klass][method].last.impl
+    count = @@adaptations[klass][method].size
     raise Exception, "Proceed on base method" if previous_method.nil?
-    previous_method
+    latest = ["proceed",  method.to_s, count.to_s].join('_').to_sym
+    self.send_method(klass, latest, previous_method)
+    latest
   end
 
   # Define a method in class
@@ -90,7 +96,7 @@ class Context
         cimpls = impls.select do |ci|
           ci.ctx == self
         end
-        # Install the base methods if no other context is available
+        # Define the base methods if no other context is available
         cimpls = impls if cimpls.empty?
         self.send_method(klass, m, cimpls.last.impl)
       end
@@ -100,8 +106,8 @@ class Context
   def add_base_methods(klass)
     if @@adaptations[klass].empty?
       klass.instance_methods(false).each do |name|
-        # Ignore leftover proceed method
-        next if name.to_s == "proceed"
+        # Ignore leftover proceed methods
+        next if name.to_s.include? "proceed"
         meth = klass.instance_method(name)
         method_bound = meth.bind(klass.new)
         self.push_adapt(klass, name, nil, method_bound.to_proc)
@@ -113,5 +119,10 @@ class Context
   def push_adapt(klass, method, ctx, impl)
     ci = CI.new(ctx, impl)
     @@adaptations[klass][method].push(ci)
+  end
+
+  # Reset changes made by the framework
+  def self.reset_cop_state
+    # TODO
   end
 end
