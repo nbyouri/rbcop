@@ -107,11 +107,13 @@ class Context
 
   def add_base_methods(klass)
     if @@adaptations[klass].empty?
-      klass.instance_methods(false).each do |name|
+      methods = klass.instance_methods(false)
+      raise Exception, "No methods in class" if methods.empty?
+      methods.each do |name|
         # Ignore leftover proceed methods
         next if name.to_s.include? "proceed"
         meth = klass.instance_method(name)
-        method_bound = meth.bind(klass.new)
+        method_bound = meth.bind(klass.class == Module ? klass : klass.new)
         self.push_adapt(klass, name, nil, method_bound.to_proc)
       end
     end

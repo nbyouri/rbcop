@@ -13,6 +13,14 @@ class D
   def bar; 4; end
 end
 
+module M
+  def foo; 5; end
+end
+
+class T
+  include M
+end
+
 class AdaptTests < Test::Unit::TestCase
   def test_active
     Context.reset_cop_state
@@ -252,6 +260,17 @@ class ResetTests2 < Test::Unit::TestCase
     c.adapt(C, :foo) { 3 }
     c.unadapt(C, :foo)
     assert_equal(1, C.new.foo)
+    c.deactivate
+  end
+end
+
+class ModuleTests < Test::Unit::TestCase
+  def test_module
+    Context.reset_cop_state
+    c = Context.new
+    c.activate
+    c.adapt(M, :foo) { 1 }
+    assert_equal(1, T.new.foo)
     c.deactivate
   end
 end
