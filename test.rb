@@ -94,9 +94,9 @@ class ArgumentTests < Test::Unit::TestCase
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |&block| lambda { block } }
-    res = C.new.foo { 1 }
+    res = C.new.foo { 1 }.call.call
     Context.reset_cop_state
-    assert_equal(1, res.call.call)
+    assert_equal(1, res)
   end
 
 end
@@ -176,6 +176,7 @@ end
 
 class ResetTests < Test::Unit::TestCase
   def test_reset
+    Context.reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { 3 }
@@ -183,11 +184,25 @@ class ResetTests < Test::Unit::TestCase
     assert_equal(1, C.new.foo)
     c.deactivate
   end
+  # Fail here, it shouldn't affect ResetTests2
+  # if reset_cop_state if correctly implemented
   def setup
     c = Context.new
     c.activate
     c.adapt(C, :foo) { bar }
-    assert_equal(2, C.new.foo)
+    # Uncomment here to test reset_cop_state
+    #assert_equal(1, C.new.foo)
+  end
+end
+
+class ResetTests2 < Test::Unit::TestCase
+  def test_reset
     Context.reset_cop_state
+    c = Context.new
+    c.activate
+    c.adapt(C, :foo) { 3 }
+    c.unadapt(C, :foo)
+    assert_equal(1, C.new.foo)
+    c.deactivate
   end
 end
