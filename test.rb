@@ -14,8 +14,8 @@ class D
 end
 
 class AdaptTests < Test::Unit::TestCase
-  # Use omit() until reset_cop_state is implemented
   def test_active
+    Context.reset_cop_state
     c = Context.new
     assert_equal(false, c.active?)
     c.activate
@@ -25,6 +25,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_adapt
+    Context.reset_cop_state
     c = Context.new
     c.adapt(C, :foo) { bar }
     c.activate
@@ -34,6 +35,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_unadapt
+    Context.reset_cop_state
     c = Context.new
     c.adapt(C, :foo) { bar }
     c.activate
@@ -45,6 +47,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_onthefly
+    Context.reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { bar }
@@ -52,6 +55,52 @@ class AdaptTests < Test::Unit::TestCase
     res = C.new.foo
     c.deactivate
     assert_equal(3, res)
+  end
+
+  def test_unadapt_self
+    Context.reset_cop_state
+    c,d = Context.new, Context.new
+    c.activate
+    d.activate
+    c.adapt(C, :foo) { 3 }
+    c.adapt(C, :foo) { 4 }
+    d.adapt(C, :foo) { 5 }
+    d.unadapt(C, :foo)
+    res = C.new.foo
+    c.deactivate
+    d.deactivate
+    assert_equal(4, res)
+  end
+
+  def test_unadapt_self_2
+    Context.reset_cop_state
+    c,d = Context.new, Context.new
+    c.activate
+    d.activate
+    c.adapt(C, :foo) { 3 }
+    c.adapt(C, :foo) { 4 }
+    d.adapt(C, :foo) { 5 }
+    c.unadapt(C, :foo)
+    d.unadapt(C, :foo)
+    res = C.new.foo
+    c.deactivate
+    d.deactivate
+    assert_equal(3, res)
+  end
+
+  def test_unadapt_self_3
+    Context.reset_cop_state
+    c,d = Context.new, Context.new
+    c.activate
+    d.activate
+    c.adapt(C, :foo) { 3 }
+    c.adapt(C, :foo) { 4 }
+    d.adapt(C, :foo) { 5 }
+    c.unadapt(C, :foo)
+    res = C.new.foo
+    c.deactivate
+    d.deactivate
+    assert_equal(5, res)
   end
 end
 
@@ -176,7 +225,6 @@ end
 
 class ResetTests < Test::Unit::TestCase
   def test_reset
-    Context.reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { 3 }
@@ -192,6 +240,7 @@ class ResetTests < Test::Unit::TestCase
     c.adapt(C, :foo) { bar }
     # Uncomment here to test reset_cop_state
     #assert_equal(1, C.new.foo)
+    c.deactivate
   end
 end
 

@@ -59,7 +59,7 @@ class Context
     latest = self.proceed(klass, method)
     # XXX hack
     hack = impl.to_source(:ignore_nested => true).gsub(/proceed/, latest.to_s)
-    
+
     # Add the adaptation
     self.push_adapt(klass, method, self, eval(hack))
 
@@ -68,10 +68,9 @@ class Context
   end
 
   # Get to the previous adaptation
-  # XXX only unadapt on self?
   def unadapt(klass, method)
-    @@adaptations[klass][method].pop
-    self.dynamic_adapt
+    self.pop_adapt(klass, method, self)
+    self.dynamic_adapt(false)
   end
 
   # Define the next most prioritary method
@@ -90,14 +89,14 @@ class Context
   end
 
   # Define an adaptation if the context is active
-  def dynamic_adapt
+  def dynamic_adapt(activate_self = true)
     if !active?; return end
 
     # Define most prioritary implementation of context for each method
     @@adaptations.each do |klass, methods|
       methods.each do |m,impls|
         cimpls = impls.select do |ci|
-          ci.ctx == self
+          ci.ctx == self if activate_self
         end
         # Define the base methods if no other context is available
         cimpls = impls if cimpls.empty?
@@ -118,21 +117,31 @@ class Context
     end
   end
 
-  # Push a new adaptation
+  # Add an adaptation to the stack
   def push_adapt(klass, method, ctx, impl)
     ci = CI.new(ctx, impl)
     @@adaptations[klass][method].push(ci)
   end
 
+  # Remove an adaptation from the stack
+  def pop_adapt(klass, method, ctx)
+    self_adapts = @@adaptations[klass][method].select do |ci|
+      ci.ctx == ctx
+    end
+    @@adaptations[klass][method].delete(self_adapts.last)
+  end
+
   # Reset global changes made by the framework
   def self.reset_cop_state
     # Reset methods to the base implementation
-    @@adaptations.each do |klass, methods|
-      klass.instance_methods(false).each do |name|
-        klass.send(:remove_method, name) if name.to_s.include? "proceed"
-      end
-      methods.each do |m,impls|
-        Context.new.send_method(klass, m, impls.first.impl)
+    if defined? @@adaptations
+      @@adaptations.each do |klass, methods|
+        klass.instance_methods(false).each do |name|
+          klass.send(:remove_method, name) if name.to_s.include? "proceed"
+        end
+        methods.each do |m,impls|
+          Context.new.send_method(klass, m, impls.first.impl)
+        end
       end
     end
 
