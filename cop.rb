@@ -62,7 +62,7 @@ class Context
     hack = impl.to_source(:ignore_nested => true).gsub(/proceed/, latest.to_s)
 
     # Add the adaptation
-    self.push_adapt(klass, method, self, eval(hack))
+    self.push_adapt(klass, method, CI.new(self, eval(hack)))
 
     # Apply
     self.dynamic_adapt
@@ -120,15 +120,14 @@ class Context
         next if name.to_s.include? "proceed"
         meth = klass.instance_method(name)
         method_bound = meth.bind(klass.class == Module ? klass : klass.new)
-        self.push_adapt(klass, name, nil, method_bound.to_proc)
+        self.push_adapt(klass, name, CI.new(nil, method_bound.to_proc))
       end
     end
   end
 
   # Add an adaptation to the stack
-  def push_adapt(klass, method, ctx, impl)
-    ci = CI.new(ctx, impl)
-    @@adaptations[klass][method].push(ci)
+  def push_adapt(klass, method, obj)
+    @@adaptations[klass][method].push(obj)
   end
 
   # Remove an adaptation from the stack
