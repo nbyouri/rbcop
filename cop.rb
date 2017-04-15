@@ -46,6 +46,7 @@ class Context
           self.send_method(klass, m, impls.last.impl)
       end
     end
+    @@count = 0
   end
 
   # Add a method to the class
@@ -57,7 +58,7 @@ class Context
 
     # Define a proceed method
     latest = self.proceed(klass, method)
-    # XXX hack
+    # XXX (´･_･`) hack
     hack = impl.to_source(:ignore_nested => true).gsub(/proceed/, latest.to_s)
 
     # Add the adaptation
@@ -83,9 +84,14 @@ class Context
     latest
   end
 
-  # Define a method in class
+  # Define a method in klass
   def send_method(klass, method, impl)
     klass.send(:define_method, method, impl)
+  end
+
+  # Remove a method in klass
+  def remove_method(klass, method)
+    klass.send(:remove_method, method)
   end
 
   # Define an adaptation if the context is active
@@ -139,7 +145,7 @@ class Context
     if defined? @@adaptations
       @@adaptations.each do |klass, methods|
         klass.instance_methods(false).each do |name|
-          klass.send(:remove_method, name) if name.to_s.include? "proceed"
+          Context.new.remove_method(klass, name) if name.to_s.include? "proceed"
         end
         methods.each do |m,impls|
           Context.new.send_method(klass, m, impls.first.impl)
@@ -150,4 +156,8 @@ class Context
     # Reset variables
     Context.set_vars
   end
+end
+
+def reset_cop_state
+  Context.reset_cop_state
 end

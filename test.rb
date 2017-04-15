@@ -1,6 +1,6 @@
 #!/usr/local/bin/ruby
 
-load 'projet.rb'
+load 'cop.rb'
 require "test/unit"
 
 class C
@@ -21,9 +21,11 @@ class T
   include M
 end
 
+class X; end
+
 class AdaptTests < Test::Unit::TestCase
   def test_active
-    Context.reset_cop_state
+    reset_cop_state
     c = Context.new
     assert_equal(false, c.active?)
     c.activate
@@ -33,7 +35,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_adapt
-    Context.reset_cop_state
+    reset_cop_state
     c = Context.new
     c.adapt(C, :foo) { bar }
     c.activate
@@ -43,7 +45,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_unadapt
-    Context.reset_cop_state
+    reset_cop_state
     c = Context.new
     c.adapt(C, :foo) { bar }
     c.activate
@@ -55,7 +57,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_onthefly
-    Context.reset_cop_state
+    reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { bar }
@@ -66,7 +68,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_unadapt_self
-    Context.reset_cop_state
+    reset_cop_state
     c,d = Context.new, Context.new
     c.activate
     d.activate
@@ -81,7 +83,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_unadapt_self_2
-    Context.reset_cop_state
+    reset_cop_state
     c,d = Context.new, Context.new
     c.activate
     d.activate
@@ -97,7 +99,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 
   def test_unadapt_self_3
-    Context.reset_cop_state
+    reset_cop_state
     c,d = Context.new, Context.new
     c.activate
     d.activate
@@ -114,6 +116,7 @@ end
 
 class ArgumentTests < Test::Unit::TestCase
   def test_adapt_arguments
+    reset_cop_state
     c = Context.new
     c.adapt(C, :foo) { |x,y| x + y }
     c.activate
@@ -123,6 +126,7 @@ class ArgumentTests < Test::Unit::TestCase
   end
 
   def test_arguments_nested_block
+    reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |x| s = ""; x.each {|i| s << i.to_s }; s}
@@ -131,6 +135,7 @@ class ArgumentTests < Test::Unit::TestCase
   end
 
   def test_arguments_optional
+    reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |x = 2| x }
@@ -139,6 +144,7 @@ class ArgumentTests < Test::Unit::TestCase
   end
 
   def test_arguments_array_decomposition
+    reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |x,*y| y }
@@ -148,6 +154,7 @@ class ArgumentTests < Test::Unit::TestCase
   end
 
   def test_arguments_block
+    reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |&block| lambda { block } }
@@ -155,12 +162,11 @@ class ArgumentTests < Test::Unit::TestCase
     Context.reset_cop_state
     assert_equal(1, res)
   end
-
 end
 
 class MultipleTests < Test::Unit::TestCase
-
   def test_two_contexts
+    reset_cop_state
     c, d = Context.new, Context.new
     c.adapt(C, :foo) { 91 }
     d.adapt(C, :foo) { 92 }
@@ -174,6 +180,7 @@ class MultipleTests < Test::Unit::TestCase
   end
 
   def test_activation_priority
+    reset_cop_state
     c,d = Context.new, Context.new
     d.adapt(C, :foo) { 13 }
     c.adapt(C, :foo) { 14 }
@@ -187,6 +194,7 @@ class MultipleTests < Test::Unit::TestCase
   end
 
   def test_two_contexts_deactivation
+    reset_cop_state
     c,d = Context.new, Context.new
     c.activate
     d.activate
@@ -197,10 +205,22 @@ class MultipleTests < Test::Unit::TestCase
     c.deactivate
     assert_equal(1337, res)
   end
+
+  def test_deactivation_active
+    reset_cop_state
+    c = Context.new
+    c.adapt(C, :foo) { 3 }
+    c.activate
+    c.activate
+    c.deactivate
+    assert_equal(false, c.active?)
+    reset_cop_state
+  end
 end
 
 class ProceedTests < Test::Unit::TestCase
   def test_proceed
+    reset_cop_state
     c =	Context.new
     c.activate
     c.adapt(C, :foo) { 3 }
@@ -211,6 +231,7 @@ class ProceedTests < Test::Unit::TestCase
   end
 
   def test_proceed_arguments
+    reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { |x| x }
@@ -221,6 +242,7 @@ class ProceedTests < Test::Unit::TestCase
   end
 
   def test_nested_proceed
+    reset_cop_state
     c = Context.new
     c.activate
     c.adapt(C, :foo) { 2 + proceed }
@@ -229,32 +251,25 @@ class ProceedTests < Test::Unit::TestCase
     c.deactivate
     assert_equal(8, res)
   end
-end
 
-class ResetTests < Test::Unit::TestCase
-  def test_reset
+  def test_proceed_unadapt
+    reset_cop_state
     c = Context.new
     c.activate
-    c.adapt(C, :foo) { 3 }
+    c.adapt(C, :foo) { 5 }
+    c.adapt(C, :foo) { 6 }
     c.unadapt(C, :foo)
-    assert_equal(1, C.new.foo)
+    c.adapt(C, :foo) { proceed }
+    res = C.new.foo
     c.deactivate
-  end
-  # Fail here, it shouldn't affect ResetTests2
-  # if reset_cop_state if correctly implemented
-  def setup
-    c = Context.new
-    c.activate
-    c.adapt(C, :foo) { bar }
-    # Uncomment here to test reset_cop_state
-    #assert_equal(1, C.new.foo)
-    c.deactivate
+    assert_equal(5, res)
   end
 end
 
 class ResetTests2 < Test::Unit::TestCase
   def test_reset
-    Context.reset_cop_state
+    reset_cop_state
+    assert_equal(1, C.new.foo)
     c = Context.new
     c.activate
     c.adapt(C, :foo) { 3 }
@@ -266,10 +281,10 @@ end
 
 class ModuleTests < Test::Unit::TestCase
   def test_module
-    Context.reset_cop_state
+    reset_cop_state
     c = Context.new
     c.activate
-    c.adapt(M, :foo) { 1 }
+    c.adapt(M, :foo) { 1  }
     assert_equal(1, T.new.foo)
     c.deactivate
   end
