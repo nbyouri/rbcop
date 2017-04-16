@@ -33,7 +33,6 @@ class Context
     self.dynamic_adapt
   end
 
-  # Deactivate current context
   def deactivate
     if !active?; return end
 

@@ -4,6 +4,12 @@
 # Project 2 report
 Youri Mouton
 
+## Notes on using `cop.rb`
+
+- It requires the `sourcify` gem.
+- Strings in blocks provided in `adapt` should use single quotes, e.g, write  
+`{'ruby'}`, not `{"ruby"}`.
+
 ## Question 1
 > How do you save/restore the default implementation of a method.
 

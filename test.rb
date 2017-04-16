@@ -1,7 +1,7 @@
 #!/usr/local/bin/ruby
 
 load 'cop.rb'
-require "test/unit"
+require "minitest/autorun"
 
 class C
   def foo; 1; end
@@ -23,7 +23,7 @@ end
 
 class X; end
 
-class AdaptTests < Test::Unit::TestCase
+class AdaptTests < Minitest::Test
   def test_active
     reset_cop_state
     c = Context.new
@@ -114,7 +114,7 @@ class AdaptTests < Test::Unit::TestCase
   end
 end
 
-class ArgumentTests < Test::Unit::TestCase
+class ArgumentTests < Minitest::Test
   def test_adapt_arguments
     reset_cop_state
     c = Context.new
@@ -129,7 +129,7 @@ class ArgumentTests < Test::Unit::TestCase
     reset_cop_state
     c = Context.new
     c.activate
-    c.adapt(C, :foo) { |x| s = ""; x.each {|i| s << i.to_s }; s}
+    c.adapt(C, :foo) { |x| s = ''; x.each {|i| s << i.to_s }; s}
     assert_equal("123", C.new.foo([1,2,3]))
     Context.reset_cop_state
   end
@@ -164,7 +164,7 @@ class ArgumentTests < Test::Unit::TestCase
   end
 end
 
-class MultipleTests < Test::Unit::TestCase
+class MultipleTests < Minitest::Test
   def test_two_contexts
     reset_cop_state
     c, d = Context.new, Context.new
@@ -214,11 +214,10 @@ class MultipleTests < Test::Unit::TestCase
     c.activate
     c.deactivate
     assert_equal(false, c.active?)
-    reset_cop_state
   end
 end
 
-class ProceedTests < Test::Unit::TestCase
+class ProceedTests < Minitest::Test
   def test_proceed
     reset_cop_state
     c =	Context.new
@@ -266,7 +265,7 @@ class ProceedTests < Test::Unit::TestCase
   end
 end
 
-class ResetTests2 < Test::Unit::TestCase
+class ResetTests2 < Minitest::Test
   def test_reset
     reset_cop_state
     assert_equal(1, C.new.foo)
@@ -279,7 +278,7 @@ class ResetTests2 < Test::Unit::TestCase
   end
 end
 
-class ModuleTests < Test::Unit::TestCase
+class ModuleTests < Minitest::Test
   def test_module
     reset_cop_state
     c = Context.new

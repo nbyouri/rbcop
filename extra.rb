@@ -1,7 +1,6 @@
 #!/usr/local/bin/ruby
 
 require './cop'
-require "test/unit"
 
 class ExtraContext < Context
   # Add priority
@@ -12,6 +11,13 @@ class ExtraContext < Context
       @ctx = ctx
       @impl = impl
       @prio = prio
+    end
+  end
+
+  def initialize
+    Context.set_vars
+    @@context_priority = Hash.new do |prios|
+      prios = Array.new
     end
   end
 
@@ -35,7 +41,12 @@ class ExtraContext < Context
     self.dynamic_adapt
   end
 
-  # Deactivate current context
+  def activate
+    @@count += 1
+    @@context_priority[self].push(@@count)
+    self.dynamic_adapt
+  end
+
   def deactivate
     if !active?; return end
 
@@ -49,78 +60,5 @@ class ExtraContext < Context
       end
     end
     @@count -= 1
-  end
-
-  # Debug
-  def self.print_adaptations
-    @@adaptations.each do |klass,methods|
-      methods.each do |m,impls|
-        impls.each do |cip|
-          if defined? cip.prio
-            p "#{m} -- #{cip.prio}"
-          end
-        end
-      end
-    end
-  end
-end
-
-class C
-  def foo; 1; end
-end
-
-class ActivationsTest < Test::Unit::TestCase
-  def test_activation
-    reset_cop_state
-    c = ExtraContext.new
-    c.adapt(C, :foo) { 2 }
-    c.activate
-    c.activate
-    c.activate
-    c.deactivate
-    c.deactivate
-    assert_equal(2, C.new.foo)
-  end
-
-  def test_deactivation
-    reset_cop_state
-    c = ExtraContext.new
-    c.adapt(C, :foo) { 2 }
-    c.activate
-    c.activate
-    c.activate
-    c.deactivate
-    c.deactivate
-    c.deactivate
-    assert_equal(1, C.new.foo)
-  end
-
-  def test_priority
-    reset_cop_state
-    c,d, e = ExtraContext.new, ExtraContext.new, ExtraContext.new
-    c.adapt(C, :foo) { 2 }
-    d.adapt(C, :foo) { 3 }
-    e.adapt(C, :foo) { 4 }
-    c.activate
-    d.activate
-    e.activate
-    d.activate
-    c.activate
-    d.deactivate
-    d.deactivate
-    e.deactivate
-    assert_equal(3, C.new.foo)
-  end
-
-  def test_priority2
-    reset_cop_state
-    a,b,c = ExtraContext.new, ExtraContext.new, ExtraContext.new
-    a.adapt(C, :foo) { 2 }
-    b.adapt(C, :foo) { 3 }
-    c.adapt(C, :foo) { 4 }
-    c.activate
-    b.activate
-    a.activate
-    ExtraContext.print_adaptations
   end
 end
